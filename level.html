@@ -1,0 +1,440 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Challenge | YBCCL</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --background: #0b0d12;
+      --panel: #12151d;
+      --border: #252b38;
+      --text: #f2f4f8;
+      --muted: #939bad;
+      --accent: #ed414b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 24px;
+    }
+
+    .header-inner,
+    main {
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .logo {
+      color: var(--accent);
+      font-weight: 900;
+      font-size: 24px;
+      text-decoration: none;
+    }
+
+    main {
+      padding: 35px 20px;
+    }
+
+    .back {
+      display: inline-block;
+      margin-bottom: 22px;
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    .back:hover {
+      color: var(--accent);
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 26px;
+      margin-bottom: 18px;
+    }
+
+    .rank {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      color: var(--accent);
+      font-size: clamp(30px, 6vw, 44px);
+      margin: 12px 0;
+      overflow-wrap: anywhere;
+    }
+
+    .creator,
+    .muted {
+      color: var(--muted);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .stat {
+      background: var(--background);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      min-width: 0;
+    }
+
+    .stat-label {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      color: var(--accent);
+      font-size: 24px;
+      font-weight: 800;
+      margin-top: 10px;
+      overflow-wrap: anywhere;
+    }
+
+    .section-title {
+      color: var(--accent);
+      font-size: 18px;
+      margin: 0 0 14px;
+    }
+
+    .description,
+    .note {
+      line-height: 1.7;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .legacy {
+      display: inline-block;
+      color: #ffb36b;
+      background: #38251b;
+      padding: 5px 9px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-left: 8px;
+    }
+
+    .copy-button {
+      background: var(--accent);
+      color: white;
+      border: 0;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+
+    .copy-button:hover {
+      filter: brightness(1.12);
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      text-align: center;
+      padding: 24px;
+      font-size: 13px;
+    }
+
+    .error {
+      color: var(--accent);
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 600px) {
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        padding: 19px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="header-inner">
+      <a class="logo" href="index.html">YBCCL</a>
+    </div>
+  </header>
+
+  <main>
+    <a class="back" href="leaderboard.html">
+      &larr; Back to leaderboard
+    </a>
+
+    <div id="status" class="panel" role="status">
+      Loading challenge...
+    </div>
+
+    <div id="content" hidden>
+      <section class="panel">
+        <div id="rank" class="rank"></div>
+        <h1 id="name"></h1>
+        <div id="creator" class="creator"></div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Enjoyment</div>
+            <div id="enjoyment" class="stat-value">—</div>
+          </div>
+
+          <div class="stat">
+            <div class="stat-label">Victors</div>
+            <div id="victors" class="stat-value">—</div>
+          </div>
+
+          <div class="stat">
+            <div class="stat-label">Level ID</div>
+            <div id="level-id" class="stat-value">—</div>
+            <button id="copy-id" class="copy-button" hidden>
+              Copy ID
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="section-title">Challenge description</h2>
+        <div id="description" class="description"></div>
+      </section>
+
+      <section class="panel">
+        <h2 class="section-title">Verifier's note</h2>
+        <div id="note" class="note"></div>
+        <p id="verifier" class="muted"></p>
+      </section>
+    </div>
+  </main>
+
+  <footer>YBCCL | YBC Challenge List</footer>
+
+  <script>
+    // Supabase project settings
+    const SUPABASE_URL =
+      "https://hdsorzrcvvyakckbgegk.supabase.co";
+
+const SUPABASE_PUBLISHABLE_KEY =
+  "sb_publishable__RCrx7HGA5RDkv0t63O0sg_JNT-qk8P";
+
+    const statusBox = document.getElementById("status");
+    const content = document.getElementById("content");
+    const copyButton = document.getElementById("copy-id");
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value;
+    }
+
+    function showError(message) {
+      statusBox.textContent = message;
+      statusBox.classList.add("error");
+      statusBox.hidden = false;
+      content.hidden = true;
+    }
+
+    async function loadChallenge() {
+      // Read the challenge ID from ?id=1
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("id");
+
+      if (!id || !/^\d+$/.test(id)) {
+        showError("Invalid challenge link. Open a challenge from the leaderboard.");
+        return;
+      }
+
+      if (
+        SUPABASE_URL === "YOUR_PROJECT_URL" ||
+        SUPABASE_PUBLISHABLE_KEY === "YOUR_PUBLISHABLE_KEY"
+      ) {
+        showError("Supabase settings have not been configured.");
+        return;
+      }
+
+      if (!window.supabase) {
+        showError(
+          "The Supabase library could not load. Check your internet connection and refresh."
+        );
+        return;
+      }
+
+      try {
+        const supabase = window.supabase.createClient(
+          SUPABASE_URL,
+          SUPABASE_PUBLISHABLE_KEY
+        );
+
+        // Load the challenge details.
+        const { data: level, error } = await supabase
+          .from("challenges")
+          .select(
+            "id, position, name, creator, verifier, is_legacy, description, enjoyment_rating, level_id, verifier_note"
+          )
+          .eq("id", id)
+          .maybeSingle();
+
+        if (error) {
+          throw error;
+        }
+
+        if (!level) {
+          showError("Challenge not found.");
+          return;
+        }
+
+        // Load completions and count unique players.
+        const {
+          data: completions,
+          error: completionsError
+        } = await supabase
+          .from("completions")
+          .select("player_id")
+          .eq("challenge_id", level.id);
+
+        let victorCount = "Unavailable";
+
+        if (completionsError) {
+          console.warn(
+            "Could not load victor count:",
+            completionsError
+          );
+        } else {
+          const uniquePlayers = new Set(
+            (completions || [])
+              .map(completion => completion.player_id)
+              .filter(playerId => playerId != null)
+              .map(playerId => String(playerId))
+          );
+
+          victorCount = String(uniquePlayers.size);
+        }
+
+        // Rank and legacy status.
+        if (level.is_legacy) {
+          document.getElementById("rank").innerHTML =
+            'Legacy challenge <span class="legacy">LEGACY</span>';
+        } else if (level.position == null) {
+          setText("rank", "Unranked challenge");
+        } else {
+          setText("rank", "Rank #" + level.position);
+        }
+
+        // Challenge information.
+        setText("name", level.name || "Unnamed challenge");
+        setText(
+          "creator",
+          "Created by " + (level.creator || "Unknown")
+        );
+
+        setText(
+          "enjoyment",
+          level.enjoyment_rating == null
+            ? "Not rated"
+            : level.enjoyment_rating + "/100"
+        );
+
+        setText("victors", victorCount);
+
+        setText(
+          "level-id",
+          level.level_id || "Not added"
+        );
+
+        setText(
+          "description",
+          level.description || "No description has been added yet."
+        );
+
+        setText(
+          "note",
+          level.verifier_note || "No verifier's note has been added yet."
+        );
+
+        setText(
+          "verifier",
+          "Verified by " + (level.verifier || "Unknown")
+        );
+
+        // Copy the Geometry Dash level ID.
+        if (level.level_id) {
+          copyButton.hidden = false;
+
+          copyButton.addEventListener("click", async () => {
+            const originalText = "Copy ID";
+
+            try {
+              await navigator.clipboard.writeText(
+                String(level.level_id)
+              );
+
+              copyButton.textContent = "Copied!";
+
+              setTimeout(() => {
+                copyButton.textContent = originalText;
+              }, 1500);
+            } catch (error) {
+              console.error("Could not copy level ID:", error);
+              copyButton.textContent = "Copy failed";
+            }
+          });
+        }
+
+        document.title =
+          (level.name || "Challenge") + " | YBCCL";
+
+        statusBox.hidden = true;
+        content.hidden = false;
+
+
+      } catch (error) {
+        console.log("YBCCL error message:", error.message);
+        console.log("YBCCL error code:", error.code);
+        console.log("YBCCL error details:", error.details);
+        console.log("YBCCL error hint:", error.hint);
+        console.log("YBCCL full error:", JSON.stringify(error, null, 2));
+
+        showError(
+          "Couldn't load this challenge. Check the browser Console for details."
+        );
+      }
+    }
+
+
+    // Start loading the challenge.
+    loadChallenge();
+  </script>
+</body>
+</html>
